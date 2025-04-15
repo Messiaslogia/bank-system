@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { generateToken } = require('../services/jwtService');
+const { gerarNumeroConta } = require('../controllers/accountController');
 
 class AuthController {
     async register(req, res) {
@@ -12,11 +13,21 @@ class AuthController {
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        await prisma.user.create({
+        const user = await prisma.user.create({
             data: { name, email, password: hashedPassword },
         });
 
-        res.status(200).json({ message: 'Usuário Criado' })
+        const numero = gerarNumeroConta();
+
+        await prisma.account.create({
+            data: {
+                number: numero,
+                userId: user.id,
+                balance: 0,
+            },
+        });
+
+        res.status(200).json({ message: 'Usuário e conta criados com sucesso' })
     }
 
     async login(req, res) {
@@ -30,7 +41,8 @@ class AuthController {
 
         const token = generateToken({ id: user.id, email: user.email });
 
-        res.status(200).json({ token })
+        res.status(200).json(user.id)
+
 
     }
 }
