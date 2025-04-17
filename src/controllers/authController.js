@@ -35,14 +35,23 @@ class AuthController {
 
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user) return res.status(401).json({ message: 'Usuário não encontrado' });
+        // if (!user) return res.render('index', { errorMessage: 'Usuário não encontrado. Cadastre-se!' });
 
-        const valid = bcrypt.compare(password, user.password);
-        if (!valid) return res.status(401).json({ message: 'Senha incorreta' });
+
+        const valid = await bcrypt.compare(password, user.password);
+        // if (!valid) return res.render('index', { errorMessage: 'Dados incorretos. Tente novamente!' });
+        if (!valid) return res.status(401).json({ message: 'Dados incorretos. Tente novamente!' });
+
 
         const token = generateToken({ id: user.id, email: user.email });
 
-        res.status(200).json(user.id)
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 3600000
+        });
 
+        res.status(200).json(user.id)
 
     }
 }
