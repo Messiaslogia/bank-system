@@ -89,7 +89,7 @@
         <!-- LOGIN -->
         <div id="loginSection">
             <h2>Login</h2>
-            <form method="POST" action="/login">
+            <form method="POST" >
                 <input name="email" type="email" placeholder="Email" required>
                 <input name="password" type="password" placeholder="Senha" required>
                 <button type="submit">Entrar</button>
@@ -143,10 +143,12 @@
 
                 const data = await res.json();
 
+                
+
                 if (res.status == 200) {
                     window.location.href = '/dashboard'; 
                 } else {
-                    document.getElementById('loginError').textContent = data.error || 'Erro no login';
+                    document.getElementById('loginError').textContent = data.error || 'Credenciais não encontradas';
                 }
 
 

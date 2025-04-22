@@ -14,10 +14,21 @@
         }
 
         .sidebar {
-            height: 100vh;
             background-color: #1f2937;
             color: white;
             padding: 2rem 1rem;
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            width: 250px;
+            transform: translateX(0);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-100%);
         }
 
         .sidebar h2 {
@@ -38,7 +49,13 @@
         }
 
         .dashboard-content {
+            margin-left: 250px;
             padding: 2rem;
+            transition: margin-left 0.3s ease;
+        }
+
+        .dashboard-content.full-width {
+            margin-left: 0;
         }
 
         .card-custom {
@@ -78,62 +95,96 @@
         .logout-btn:hover {
             color: #ef4444;
         }
+
+        .menu-toggle {
+            background: none;
+            border: none;
+            font-size: 1.8rem;
+            color: #1f2937;
+            margin-right: 1rem;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .dashboard-content {
+                margin-left: 0;
+            }
+
+            .dashboard-content.full-width {
+                margin-left: 0;
+            }
+        }
     </style>
 </head>
 
 <body>
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <div class="col-md-3 sidebar">
-                <h2><i class="bi bi-bank"></i> MyBank</h2>
-                <a href="#"><i class="bi bi-speedometer2"></i> Dashboard</a>
-                <a href="#"><i class="bi bi-arrow-down-up"></i> Transações</a>
-                <a href="#"><i class="bi bi-wallet2"></i> Fazer transferência</a>
-                <a href="#"><i class="bi bi-door-closed"></i> Sair</a>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <h2><i class="bi bi-bank"></i> MyBank</h2>
+        <a href="#"><i class="bi bi-speedometer2"></i> Dashboard</a>
+        <a href="#"><i class="bi bi-arrow-down-up"></i> Transações</a>
+        <a href="#"><i class="bi bi-wallet2"></i> Fazer transferência</a>
+        <a href="#"><i class="bi bi-door-closed"></i> Sair</a>
+    </div>
+
+    <!-- Main Content -->
+    <div class="dashboard-content" id="main">
+        <div class="top-bar">
+            <div class="d-flex align-items-center">
+                <button class="menu-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+                <h3 class="mb-0">Olá, <%= nome %> 👋</h3>
             </div>
+            <a href="/logout" class="logout-btn"><i class="bi bi-box-arrow-right"></i> Sair</a>
+        </div>
 
-            <!-- Main Content -->
-            <div class="col-md-9 dashboard-content">
-                <div class="top-bar">
-                    <h3>Olá, <%= nome %> 👋</h3>
-                    <a href="/logout" class="logout-btn"><i class="bi bi-box-arrow-right"></i> Sair</a>
-                </div>
-
-                <!-- Account Summary -->
-                <div class="row g-4">
-                    <div class="col-md-6">
-                        <div class="card card-custom p-4">
-                            <div class="info-title">Saldo disponível</div>
-                            <div class="balance">R$ <%= saldo%>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card card-custom p-4">
-                            <div class="info-title">Número da conta</div>
-                            <div class="info-value">
-                                <%= numeroConta %>
-                            </div>
-                            <div class="info-title mt-3">E-mail</div>
-                            <div class="info-value">
-                                <%= email %>
-                            </div>
-                        </div>
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card card-custom p-4">
+                    <div class="info-title">Saldo disponível</div>
+                    <div class="balance">R$ <%= saldo %>
                     </div>
                 </div>
-
-                <!-- Future Section: Últimas transações -->
-                <div class="row mt-5">
-                    <div class="col">
-                        <h5 class="mb-3">Últimas transações</h5>
-                        <p class="text-muted">Você ainda não possui transações.</p>
-                        <!-- Aqui você pode exibir transações futuramente -->
+            </div>
+            <div class="col-md-6">
+                <div class="card card-custom p-4">
+                    <div class="info-title">Número da conta</div>
+                    <div class="info-value">
+                        <%= numeroConta %>
+                    </div>
+                    <div class="info-title mt-3">E-mail</div>
+                    <div class="info-value">
+                        <%= email %>
                     </div>
                 </div>
             </div>
         </div>
+
+        <div class="row mt-5">
+            <div class="col">
+                <h5 class="mb-3">Últimas transações</h5>
+                <p class="text-muted">Você ainda não possui transações.</p>
+            </div>
+        </div>
     </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const main = document.getElementById('main');
+
+            sidebar.classList.toggle('collapsed');
+            sidebar.classList.toggle('open'); // Para mobile
+            main.classList.toggle('full-width');
+        }
+    </script>
 </body>
 
 </html>
