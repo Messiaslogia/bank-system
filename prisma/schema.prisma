@@ -23,6 +23,7 @@ model Account {
   userId       Int
   user         User          @relation(fields: [userId], references: [id])
   transactions Transaction[]
+  Debt         Debt[]
 }
 
 model Transaction {
@@ -34,4 +35,20 @@ model Transaction {
   createdAt     DateTime @default(now())
   Account       Account? @relation(fields: [accountId], references: [id])
   accountId     Int?
+}
+
+model Debt {
+  id           Int      @id @default(autoincrement())
+  description  String
+  amount       Float
+  status       String   @default("pendente") // pendente | paga | vencida
+  dueDate      DateTime
+  pixTxId      String? // Novo campo para armazenar o txid da transação Pix
+  pixPayload   String? // Gerado pelo Inter
+  pixQrCodeUrl String? // Imagem do QR code
+  accountId    Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id])
 }

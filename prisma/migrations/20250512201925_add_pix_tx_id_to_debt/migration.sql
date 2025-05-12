@@ -34,8 +34,28 @@ CREATE TABLE `Transaction` (
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
+-- CreateTable
+CREATE TABLE `Debt` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `description` VARCHAR(191) NOT NULL,
+    `amount` DOUBLE NOT NULL,
+    `status` VARCHAR(191) NOT NULL DEFAULT 'pendente',
+    `dueDate` DATETIME(3) NOT NULL,
+    `pixTxId` VARCHAR(191) NULL,
+    `pixPayload` VARCHAR(191) NULL,
+    `pixQrCodeUrl` VARCHAR(191) NULL,
+    `accountId` INTEGER NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 -- AddForeignKey
 ALTER TABLE `Account` ADD CONSTRAINT `Account_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `Transaction` ADD CONSTRAINT `Transaction_accountId_fkey` FOREIGN KEY (`accountId`) REFERENCES `Account`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `Debt` ADD CONSTRAINT `Debt_accountId_fkey` FOREIGN KEY (`accountId`) REFERENCES `Account`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

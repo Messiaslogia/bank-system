@@ -143,15 +143,11 @@
 
                 const data = await res.json();
 
-                
-
                 if (res.status == 200) {
                     window.location.href = '/dashboard'; 
                 } else {
-                    document.getElementById('loginError').textContent = data.error || 'Credenciais não encontradas';
+                    document.getElementById('loginError').textContent = data.message || 'Credenciais não encontradas';
                 }
-
-
             } catch (errorMessage) {
                 console.log("Error:".errorMessage);
             }

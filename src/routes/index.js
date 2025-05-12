@@ -4,6 +4,7 @@ const AuthController = require('../controllers/authController');
 const accountRoutes = require('./accountRoutes');
 const transactionRoutes = require('./transactionRoutes');
 const dashboardRoutes = require('./dashboardRoutes');
+const debtRoutes = require('./debtRoutes');
 
 router.get('/', (req, res) => { res.render('index'); })
 
@@ -13,5 +14,7 @@ router.post('/register', AuthController.register);
 router.post('/conta', accountRoutes);
 router.post('/transacao', transactionRoutes);
 router.use('/dashboard', dashboardRoutes);
+
+router.use('/dividas', debtRoutes);
 
 module.exports = router;

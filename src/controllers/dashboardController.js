@@ -12,6 +12,9 @@ class DashboardController {
             }
         });
 
+        console.log(user.accounts[0].number);
+
+
         if (!user) {
             return res.redirect('/');
         }
@@ -19,8 +22,8 @@ class DashboardController {
         res.render('dashboard', {
             nome: user.name,
             email: user.email,
-            numeroConta: user?.number || 'N/A',
-            saldo: user?.balance?.toFixed(2) || '0.00'
+            numeroConta: user.accounts[0].number || 'N/A',
+            saldo: user.accounts[0].balance.toFixed(2) || '1.00'
         });
     }
 };
