@@ -63,6 +63,23 @@ class DebtController {
             res.status(500).json({ message: 'Erro ao criar divída' });
         }
     }
+
+    async recuperarTodas(req, res) {
+        const userId = req.user.id;
+
+        const conta = await prisma.account.findFirst({
+            where: { userId },
+            include: {
+                Debt: true
+            }
+        });
+
+        res.json({
+            status: 'ok',
+            dividas: conta?.Debt || []
+        });
+
+    };
 }
 
 module.exports = new DebtController();

@@ -7,6 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <style>
         body {
             background-color: #f0f2f5;
@@ -104,6 +106,10 @@
             margin-right: 1rem;
         }
 
+        
+
+        
+
         /* Responsividade */
         @media (max-width: 768px) {
             .sidebar {
@@ -131,8 +137,8 @@
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <h2><i class="bi bi-bank"></i> MyBank</h2>
-        <a href="#"><i class="bi bi-speedometer2"></i> Inicio</a>
-        <a href="#"><i class="bi bi-wallet2"></i> Dividas</a>
+        <a id="start" href="#"><i class="bi bi-speedometer2"></i> Inicio</a>
+        <a id="linkDebts" href="#"><i class="bi bi-wallet2"></i> Dividas</a>
         <a id="sidebarLogout" href="/logout"><i class="bi bi-door-closed"></i> Sair</a>
     </div>
 
@@ -146,7 +152,7 @@
             <a id="topbarLogout" href="/logout" class="logout-btn"><i class="bi bi-box-arrow-right"></i> Sair</a>
         </div>
 
-        <div class="row g-4">
+        <div class="row g-4 infoCustom " id="infoCustomer">
             <div class="col-md-6">
                 <div class="card card-custom p-4">
                     <div class="info-title">Saldo disponível</div>
@@ -168,7 +174,7 @@
             </div>
         </div>
 
-        <div class="row mt-5">
+        <div class="row mt-5 charges " id="charges">
             <div class="col">
                 <h5 class="mb-3">Suas cobranças</h5>
         
@@ -187,8 +193,11 @@
                                                 <strong>
                                                     <%= divida.description %>
                                                 </strong>
-                                                <i class="bi bi-info-circle text-secondary"
-                                                    title="Cobrança criada em <%= divida.createdAt.toLocaleDateString() %>"></i>
+                                                <i class="bi bi-info-circle text-secondary debt-info-icon" data-id="123" data-description="Mensalidade"
+                                                    data-amount="99.90" data-status="pendente" data-created="2025-05-14T14:00:00Z" data-due="2025-05-20T14:00:00Z"
+                                                    title="Clique para ver detalhes">
+                                                </i>
+
                                             </div>
                                             <p class="mb-1">Valor: <strong>R$ <%= divida.amount.toFixed(2) %></strong></p>
                                             <p class="mb-1">
@@ -216,6 +225,14 @@
             </div>
         </div>
 
+        <!-- Dividas gerais  -->
+        <div class="row mt-5 generalDebts d-none" id="generalDebts">
+            <div class="col">
+                <h5 class="mb-3">Dívidas</h5>
+                <div id="debtsContainer"></div>
+            </div>
+        </div>
+
         <div id="toastLogout" class="toast align-items-center text-white bg-success border-0 position-fixed bottom-0 end-0 m-4"
             role="alert" aria-live="assertive" aria-atomic="true">
             <div class="d-flex">
@@ -224,6 +241,27 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modal de Detalhes da Dívida -->
+        <div class="modal fade" id="modalDetalhesDivida" tabindex="-1" aria-labelledby="modalDetalhesLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalDetalhesLabel">Detalhes da Dívida</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p><strong>Descrição:</strong> <span id="modalDescricao"></span></p>
+                        <p><strong>Valor:</strong> R$ <span id="modalValor"></span></p>
+                        <p><strong>Status:</strong> <span id="modalStatus"></span></p>
+                        <p><strong>Data de Criação:</strong> <span id="modalCriacao"></span></p>
+                        <p><strong>Data de Vencimento:</strong> <span id="modalVencimento"></span></p>
+                        <p><strong>ID da cobrança:</strong> <span id="modalId"></span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+  
         
     
 
@@ -268,6 +306,140 @@
         document.getElementById('sidebarLogout').addEventListener('click', handleLogoutClick);
         document.getElementById('topbarLogout').addEventListener('click', handleLogoutClick);
     </script>
+
+<script>
+    let linkDebts = document.getElementById('linkDebts');
+    let linkStart = document.getElementById('start');
+    let divGeneralDebts = document.getElementById('generalDebts');
+    let divCharges = document.getElementById('charges');
+    let divInfoCustomer = document.getElementById('infoCustomer');
+    let debtsContainer = document.getElementById('debtsContainer');
+
+    linkDebts.addEventListener('click', async function (e) {
+        e.preventDefault();
+        divGeneralDebts.classList.remove('d-none');
+        divCharges.classList.add('d-none');
+        divInfoCustomer.classList.add('d-none');
+
+        try {
+            const res = await fetch('/dividas/todas', {
+                method: 'GET',
+                headers: {
+                    'Content-type': 'application/json'
+                },
+                credentials: 'include'
+            });
+
+            const { status, body } = {
+                status: res.status,
+                body: await res.json()
+            };
+
+            if (status === 200) {
+                renderDebts(body.dividas);
+            } else {
+                alert(body.message || 'Erro ao buscar dívidas.');
+            }
+        } catch (err) {
+            alert('Erro inesperado ao buscar dívidas.');
+        }
+    });
+
+    linkStart.addEventListener('click', function (e) {
+        e.preventDefault();
+        divGeneralDebts.classList.add('d-none');
+        divCharges.classList.remove('d-none');
+        divInfoCustomer.classList.remove('d-none');
+    });
+
+    function renderDebts(dividas) {
+        debtsContainer.innerHTML = '';
+
+        if (!dividas || dividas.length === 0) {
+            debtsContainer.innerHTML = `
+                <div class="card card-custom p-4 text-center text-muted">
+                    <i class="bi bi-exclamation-circle fs-4 mb-2"></i>
+                    <p class="mb-0">Você ainda não possui cobranças registradas.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const row = document.createElement('div');
+        row.className = 'row row-cols-1 row-cols-md-2 g-4';
+
+        dividas.forEach(divida => {
+            const statusClass =
+                divida.status === 'pendente' ? 'bg-warning text-dark' :
+                    divida.status === 'paga' ? 'bg-success' :
+                        'bg-danger';
+
+            const card = document.createElement('div');
+            card.className = 'col';
+            card.innerHTML = `
+                <div class="card card-custom p-4 h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <strong>${divida.description}</strong>
+                            <i class="bi bi-info-circle text-secondary debt-info-icon" data-id="${divida.id}"
+                                                    data-description="${divida.description}" data-amount="${divida.amount}" data-status="${divida.status}"
+                                                    data-created="${divida.createdAt}" data-due="${divida.dueDate}" title="Clique para ver detalhes"></i>
+                        </div>
+                        <p class="mb-1">Valor: <strong>R$ ${divida.amount.toFixed(2)}</strong></p>
+                        <p class="mb-1">
+                            Status:
+                            <span class="badge ${statusClass}">${divida.status}</span>
+                        </p>
+                        <p class="text-muted small mb-0">Vencimento: ${new Date(divida.dueDate).toLocaleDateString()}</p>
+                    </div>
+                    ${divida.status === 'pendente' ? `
+                        <a href="/pagar/${divida.id}" class="btn btn-sm btn-outline-success mt-3">
+                            <i class="bi bi-cash-coin"></i> Pagar
+                        </a>` : ''}
+                </div>
+            `;
+            row.appendChild(card);
+        });
+
+        
+
+
+        debtsContainer.appendChild(row);
+        const modal = document.getElementById('modalDetalhesDivida');
+        modal.show();
+    }
+</script>
+
+<script>
+    // Função para abrir o modal de detalhes da dívida
+    document.addEventListener('click', function (e) {
+        if (e.target.classList.contains('debt-info-icon')) {
+            const icon = e.target;
+
+            // Pega os dados do dataset do ícone
+            const descricao = icon.dataset.description;
+            const valor = parseFloat(icon.dataset.amount).toFixed(2);
+            const status = icon.dataset.status;
+            const criadoEm = new Date(icon.dataset.created).toLocaleDateString();
+            const vencimento = new Date(icon.dataset.due).toLocaleDateString();
+            const id = icon.dataset.id;
+
+            // Preenche os campos do modal
+            document.getElementById('modalDescricao').textContent = descricao;
+            document.getElementById('modalValor').textContent = valor;
+            document.getElementById('modalStatus').textContent = status;
+            document.getElementById('modalCriacao').textContent = criadoEm;
+            document.getElementById('modalVencimento').textContent = vencimento;
+            document.getElementById('modalId').textContent = id;
+
+            // Abre o modal usando Bootstrap
+            const modal = new bootstrap.Modal(document.getElementById('modalDetalhesDivida'));
+            modal.show();
+        }
+    });
+</script>
+
+
     
 </body>
 
