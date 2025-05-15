@@ -8,22 +8,27 @@ class DashboardController {
         const user = await prisma.user.findUnique({
             where: { id: userId },
             include: {
-                accounts: true
+                accounts: {
+                    include: {
+                        Debt: true
+                    }
+                }
             }
         });
-
-        console.log(user.accounts[0].number);
 
 
         if (!user) {
             return res.redirect('/');
         }
 
+        const conta = user.accounts[0];
+
         res.render('dashboard', {
             nome: user.name,
             email: user.email,
             numeroConta: user.accounts[0].number || 'N/A',
-            saldo: user.accounts[0].balance.toFixed(2) || '1.00'
+            saldo: user.accounts[0].balance.toFixed(2) || '1.00',
+            dividas: conta?.Debt
         });
     }
 };

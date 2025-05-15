@@ -27,7 +27,8 @@ class AuthController {
             },
         });
 
-        res.status(200).json({ message: 'Usuário e conta criados com sucesso' })
+        if (user) return res.status(200).json({ message: 'Usuário e conta criados com sucesso' });
+
     }
 
     async login(req, res) {
@@ -53,6 +54,11 @@ class AuthController {
 
         res.status(200).json(user.id)
 
+    }
+
+    async logout(req, res) {
+        res.clearCookie('token');
+        return res.status(200).json({ message: 'Logout realizado com sucesso' });
     }
 }
 

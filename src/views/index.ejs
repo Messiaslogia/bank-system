@@ -130,6 +130,7 @@
 
             const email = e.target.email.value;
             const password = e.target.password.value;
+            
 
             try {
                 const res = await fetch('/login', {
@@ -152,6 +153,44 @@
                 console.log("Error:".errorMessage);
             }
         })
+
+        
+    </script>
+
+    <script>
+        document.getElementById('cadastroSection').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const email = e.target.email.value;
+            const name = e.target.name.value;
+            const password = e.target.password.value;
+            
+            try {
+                const res = await fetch('/register', {
+                    method: 'POST',
+                    headers:{
+                        'Content-Type': 'application/json'
+                    },
+                    credentials:"include",
+                    body:JSON.stringify({name, email, password})
+                })
+
+                const data = await res.json();
+
+                if(res.status == 200){
+                    document.getElementById('loginError').textContent = data.message;
+                    document.getElementById('loginError').style.color = 'green';
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000)
+                }else{
+                    document.getElementById('loginError').textContent = data.message || 'Credenciais não encontradas';
+                }
+            } catch (err) {
+                
+            }
+        })
+
     </script>
 </body>
 
