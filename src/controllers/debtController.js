@@ -80,6 +80,39 @@ class DebtController {
         });
 
     };
+
+    async recuperarPendentes(req, res) {
+        const userId = req.user.id;
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: {
+                accounts: true
+            }
+        });
+
+        if (!user) return res.redirect('/');
+
+        const conta = await prisma.account.findFirst({
+            where: { userId }
+        });
+
+        if (!conta) return res.status(404).json({ message: 'Conta não encontrada!' });
+
+        const dividas = await prisma.debt.findMany({
+            where: {
+                accountId: conta.id,
+                status: 'pendente'
+            }
+        })
+
+        console.log(dividas);
+
+        res.json({
+            status: 'ok',
+            dividas: dividas || []
+        });
+    }
 }
 
 module.exports = new DebtController();

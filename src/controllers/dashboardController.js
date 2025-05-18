@@ -28,23 +28,42 @@ class DashboardController {
             email: user.email,
             numeroConta: conta?.number || 'N/A',
             saldo: conta?.balance.toFixed(2) || '0.00',
-            dividas: conta?.Debt || []
         });
     }
 
-    async recuperarTodas(params) {
+    async recuperarTodas(req, res) {
         const userId = req.user.id;
+
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
 
         const conta = await prisma.account.findFirst({
             where: { userId },
-            include: {
-                Debt: true
-            }
         });
 
-        res.json(conta?.Debt || []);
+        if (!conta) return res.status(404).json({ message: "Conta não encontrada." });
 
-    };
+        const [dividas, total] = await Promise.all([
+            prisma.debt.findMany({
+                where: { accountId: conta.id },
+                skip,
+                take: limit,
+                orderBy: { dueDate: 'asc' },
+            }),
+            prisma.debt.count({
+                where: { accountId: conta.id }
+            })
+        ]);
+
+        res.json({
+            dividas,
+            total,
+            page,
+            totalPages: Math.ceil(total / limit)
+        });
+    }
+
 };
 
 module.exports = new DashboardController();

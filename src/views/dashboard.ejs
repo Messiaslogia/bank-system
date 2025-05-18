@@ -177,51 +177,7 @@
         <div class="row mt-5 charges " id="charges">
             <div class="col">
                 <h5 class="mb-3">Suas cobranças</h5>
-        
-                <% if (!dividas || dividas.length===0) { %>
-                    <div class="card card-custom p-4 text-center text-muted">
-                        <i class="bi bi-exclamation-circle fs-4 mb-2"></i>
-                        <p class="mb-0">Você ainda não possui cobranças registradas.</p>
-                    </div>
-                    <% } else { %>
-                        <div class="row row-cols-1 row-cols-md-2 g-4">
-                            <% dividas.forEach(divida=> { %>
-                                <div class="col">
-                                    <div class="card card-custom p-4 h-100 d-flex flex-column justify-content-between">
-                                        <div>
-                                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                                <strong>
-                                                    <%= divida.description %>
-                                                </strong>
-                                                <i class="bi bi-info-circle text-secondary debt-info-icon" data-id="123" data-description="Mensalidade"
-                                                    data-amount="99.90" data-status="pendente" data-created="2025-05-14T14:00:00Z" data-due="2025-05-20T14:00:00Z"
-                                                    title="Clique para ver detalhes">
-                                                </i>
-
-                                            </div>
-                                            <p class="mb-1">Valor: <strong>R$ <%= divida.amount.toFixed(2) %></strong></p>
-                                            <p class="mb-1">
-                                                Status:
-                                                <span class="badge 
-                                                        <%= divida.status === 'pendente' ? 'bg-warning text-dark' : 
-                                                            divida.status === 'paga' ? 'bg-success' : 'bg-danger' %>">
-                                                    <%= divida.status %>
-                                                </span>
-                                            </p>
-                                            <p class="text-muted small mb-0">Vencimento: <%= divida.dueDate.toLocaleDateString()
-                                                    %>
-                                            </p>
-                                        </div>
-                                        <% if (divida.status==='pendente' ) { %>
-                                            <a href="/pagar/<%= divida.id %>" class="btn btn-sm btn-outline-success mt-3">
-                                                <i class="bi bi-cash-coin"></i> Pagar
-                                            </a>
-                                            <% } %>
-                                    </div>
-                                </div>
-                                <% }) %>
-                        </div>
-                        <% } %>
+                <div id="pendentesContainer"></div>
             </div>
         </div>
 
@@ -265,47 +221,47 @@
         
     
 
-    <script>
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const main = document.getElementById('main');
+<script>
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const main = document.getElementById('main');
 
-            sidebar.classList.toggle('collapsed');
-            sidebar.classList.toggle('open'); // Para mobile
-            main.classList.toggle('full-width');
-        }
-    </script>
+        sidebar.classList.toggle('collapsed');
+        sidebar.classList.toggle('open'); // Para mobile
+        main.classList.toggle('full-width');
+    }
+</script>
     
-    <script>
-        function handleLogoutClick(event) {
-            event.preventDefault();
+<script>
+    function handleLogoutClick(event) {
+        event.preventDefault();
 
-            fetch('/logout', {
-                method: 'POST',
-                headers: {
-                    'Content-type': 'application/json'
-                },
-                credentials: "include",
+        fetch('/logout', {
+            method: 'POST',
+            headers: {
+                'Content-type': 'application/json'
+            },
+            credentials: "include",
+        })
+            .then(res => res.json().then(data => ({ status: res.status, body: data })))
+            .then(({ status, body }) => {
+                if (status === 200) {
+                    const toast = document.getElementById('toastLogout');
+                    toast.classList.add('show');
+
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                } else {
+                    alert(body.message || 'Erro ao fazer logout.');
+                }
             })
-                .then(res => res.json().then(data => ({ status: res.status, body: data })))
-                .then(({ status, body }) => {
-                    if (status === 200) {
-                        const toast = document.getElementById('toastLogout');
-                        toast.classList.add('show');
+            .catch(() => alert('Erro inesperado ao fazer logout.'));
+    }
 
-                        setTimeout(() => {
-                            window.location.href = '/';
-                        }, 2000);
-                    } else {
-                        alert(body.message || 'Erro ao fazer logout.');
-                    }
-                })
-                .catch(() => alert('Erro inesperado ao fazer logout.'));
-        }
-
-        document.getElementById('sidebarLogout').addEventListener('click', handleLogoutClick);
-        document.getElementById('topbarLogout').addEventListener('click', handleLogoutClick);
-    </script>
+    document.getElementById('sidebarLogout').addEventListener('click', handleLogoutClick);
+    document.getElementById('topbarLogout').addEventListener('click', handleLogoutClick);
+</script>
 
 <script>
     let linkDebts = document.getElementById('linkDebts');
@@ -437,6 +393,79 @@
             modal.show();
         }
     });
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const res = await fetch('/dividas/pendentes', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+            });
+            
+            console.log(res)
+            if (!res.ok) throw new Error('Erro ao buscar dívidas pendentes');
+            const { dividas } = await res.json();
+
+            renderPendingDebts(dividas);
+        } catch (err) {
+            console.error(err);
+            document.getElementById('pendentesContainer').innerHTML = `
+                <div class="card card-custom p-4 text-center text-muted">
+                    <i class="bi bi-exclamation-circle fs-4 mb-2"></i>
+                    <p class="mb-0">Erro ao carregar cobranças pendentes.</p>
+                </div>
+            `;
+        }
+    });
+
+    function renderPendingDebts(dividas) {
+            const container = document.getElementById('pendentesContainer');
+            container.innerHTML = '';
+
+            if (!dividas || dividas.length === 0) {
+                container.innerHTML = `
+            <div class="card card-custom p-4 text-center text-muted">
+                <i class="bi bi-exclamation-circle fs-4 mb-2"></i>
+                <p class="mb-0">Nenhuma dívida pendente encontrada.</p>
+            </div>
+        `;
+                return;
+            }
+
+            const row = document.createElement('div');
+            row.className = 'row row-cols-1 row-cols-md-2 g-4';
+
+            dividas.forEach(divida => {
+                const card = document.createElement('div');
+                card.className = 'col';
+                card.innerHTML = `
+            <div class="card card-custom p-4 h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <strong>${divida.description}</strong>
+                        <i class="bi bi-info-circle text-secondary debt-info-icon" data-id="${divida.id}"
+                                                data-description="${divida.description}" data-amount="${divida.amount}" data-status="${divida.status}"
+                                                data-created="${divida.createdAt}" data-due="${divida.dueDate}" title="Clique para ver detalhes"></i>
+                    </div>
+                    <p class="mb-1">Valor: <strong>R$ ${divida.amount.toFixed(2)}</strong></p>
+                    <p class="mb-1">
+                        Status:
+                        <span class="badge bg-warning text-dark">${divida.status}</span>
+                    </p>
+                    <p class="text-muted small mb-0">Vencimento: ${new Date(divida.dueDate).toLocaleDateString()}</p>
+                </div>
+                <a href="/pagar/${divida.id}" class="btn btn-sm btn-outline-success mt-3">
+                    <i class="bi bi-cash-coin"></i> Pagar
+                </a>
+            </div>
+        `;
+                row.appendChild(card);
+            });
+
+            container.appendChild(row);
+        }
 </script>
 
 
