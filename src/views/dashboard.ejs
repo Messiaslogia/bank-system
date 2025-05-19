@@ -156,8 +156,7 @@
             <div class="col-md-6">
                 <div class="card card-custom p-4">
                     <div class="info-title">Saldo disponível</div>
-                    <div class="balance">R$ <%= saldo %>
-                    </div>
+                    <div class="balance">R$ <%= saldo %></div>
                 </div>
             </div>
             <div class="col-md-6">
@@ -176,8 +175,7 @@
 
         <div class="row mt-5 charges " id="charges">
             <div class="col">
-                <h5 class="mb-3">Suas cobranças</h5>
-                <div id="pendentesContainer"></div>
+                
             </div>
         </div>
 
@@ -198,28 +196,147 @@
             </div>
         </div>
 
-        <!-- Modal de Detalhes da Dívida -->
-        <div class="modal fade" id="modalDetalhesDivida" tabindex="-1" aria-labelledby="modalDetalhesLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
+        <div class="container-fluid mt-4" id="dividasPendentesContainer">
+            <h3 class="mb-4">Dívidas Pendentes</h3>
+        
+            <div id="lista-dividas" class="list-group"></div>
+        
+            <nav aria-label="Paginação" class="mt-3">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item" id="page-prev">
+                        <button class="page-link">Anterior</button>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link" id="pagina-atual">1</span>
+                    </li>
+                    <li class="page-item" id="page-next">
+                        <button class="page-link">Próximo</button>
+                    </li>
+                </ul>
+            </nav>  
+        </div>
+        <!-- Modal Detalhes -->
+        <div class="modal fade" id="modalDetalhes" tabindex="-1" aria-labelledby="modalDetalhesLabel" aria-hidden="true">
+            <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="modalDetalhesLabel">Detalhes da Dívida</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                     </div>
                     <div class="modal-body">
-                        <p><strong>Descrição:</strong> <span id="modalDescricao"></span></p>
-                        <p><strong>Valor:</strong> R$ <span id="modalValor"></span></p>
-                        <p><strong>Status:</strong> <span id="modalStatus"></span></p>
-                        <p><strong>Data de Criação:</strong> <span id="modalCriacao"></span></p>
-                        <p><strong>Data de Vencimento:</strong> <span id="modalVencimento"></span></p>
-                        <p><strong>ID da cobrança:</strong> <span id="modalId"></span></p>
+                        <p><strong>ID:</strong> <span id="modal-id"></span></p>
+                        <p><strong>Descrição:</strong> <span id="modal-descricao"></span></p>
+                        <p><strong>Valor:</strong> R$ <span id="modal-valor"></span></p>
+                        <p><strong>Vencimento:</strong> <span id="modal-vencimento"></span></p>
+                        <p><strong>Status:</strong> <span id="modal-status"></span></p>
+                        <p><strong>Pix TxId:</strong> <span id="modal-pixTxId"></span></p>
+                        <p><strong>Pix Payload:</strong>
+                        <pre id="modal-pixPayload" style="white-space: pre-wrap; word-wrap: break-word;"></pre>
+                        </p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
                     </div>
                 </div>
             </div>
         </div>
   
         
-    
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    const listaDividas = document.getElementById('lista-dividas');
+    const btnPrev = document.getElementById('page-prev');
+    const btnNext = document.getElementById('page-next');
+    const paginaAtualSpan = document.getElementById('pagina-atual');
+
+    const modal = new bootstrap.Modal(document.getElementById('modalDetalhes'));
+    const modalId = document.getElementById('modal-id');
+    const modalDescricao = document.getElementById('modal-descricao');
+    const modalValor = document.getElementById('modal-valor');
+    const modalVencimento = document.getElementById('modal-vencimento');
+    const modalStatus = document.getElementById('modal-status');
+    const modalPixTxId = document.getElementById('modal-pixTxId');
+    const modalPixPayload = document.getElementById('modal-pixPayload');
+
+    let paginaAtual = 1;
+    const limite = 5;
+
+    async function carregarDividas(pagina) {
+        try {
+            const response = await fetch(`/dividas/pendentes?page=${pagina}&limit=${limite}`, {
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token') // ajuste conforme seu token
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.status !== 'ok') {
+                listaDividas.innerHTML = `<div class="alert alert-danger">Erro ao carregar dívidas</div>`;
+                return;
+            }
+
+            const dividas = data.dividas;
+
+            if (dividas.length === 0 && pagina > 1) {
+                paginaAtual--;
+                return;
+            }
+
+            listaDividas.innerHTML = '';
+
+            dividas.forEach(divida => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'list-group-item list-group-item-action';
+                item.innerHTML = `
+            <div class="d-flex w-100 justify-content-between">
+              <h5 class="mb-1">${divida.description}</h5>
+              <small>${new Date(divida.dueDate).toLocaleDateString()}</small>
+            </div>
+            <p class="mb-1">Valor: R$ ${divida.amount.toFixed(2)}</p>
+            <small>Status: <span class="badge bg-warning text-dark">${divida.status}</span></small>
+          `;
+                item.addEventListener('click', () => mostrarDetalhes(divida));
+                listaDividas.appendChild(item);
+            });
+
+            paginaAtualSpan.textContent = paginaAtual;
+            btnPrev.classList.toggle('disabled', paginaAtual === 1);
+            btnNext.classList.toggle('disabled', dividas.length < limite);
+
+        } catch (error) {
+            listaDividas.innerHTML = `<div class="alert alert-danger">Erro ao carregar dívidas</div>`;
+            console.error(error);
+        }
+    }
+
+    function mostrarDetalhes(divida) {
+        modalId.textContent = divida.id;
+        modalDescricao.textContent = divida.description;
+        modalValor.textContent = divida.amount.toFixed(2);
+        modalVencimento.textContent = new Date(divida.dueDate).toLocaleDateString();
+        modalStatus.textContent = divida.status;
+        modalPixTxId.textContent = divida.pixTxId || '-';
+        modalPixPayload.textContent = divida.pixPayload || '-';
+        modal.show();
+    }
+
+    btnPrev.querySelector('button').addEventListener('click', () => {
+        if (paginaAtual > 1) {
+            paginaAtual--;
+            carregarDividas(paginaAtual);
+        }
+    });
+
+    btnNext.querySelector('button').addEventListener('click', () => {
+        paginaAtual++;
+        carregarDividas(paginaAtual);
+    });
+
+    carregarDividas(paginaAtual);
+</script>
 
 <script>
     function toggleSidebar() {
@@ -270,12 +387,14 @@
     let divCharges = document.getElementById('charges');
     let divInfoCustomer = document.getElementById('infoCustomer');
     let debtsContainer = document.getElementById('debtsContainer');
+    let dividasPendentes = document.getElementById('dividasPendentesContainer');
 
     linkDebts.addEventListener('click', async function (e) {
         e.preventDefault();
         divGeneralDebts.classList.remove('d-none');
         divCharges.classList.add('d-none');
-        divInfoCustomer.classList.add('d-none');
+        divInfoCustomer.classList.add('d-none'); 
+        dividasPendentes.classList.add('d-none'); 
 
         try {
             const res = await fetch('/dividas/todas', {
@@ -285,6 +404,7 @@
                 },
                 credentials: 'include'
             });
+            
 
             const { status, body } = {
                 status: res.status,
@@ -292,9 +412,10 @@
             };
 
             if (status === 200) {
+                console.log(body.dividas);
                 renderDebts(body.dividas);
             } else {
-                alert(body.message || 'Erro ao buscar dívidas.');
+                alert(body.message || 'Erro ao buscar dívidas.'.err);
             }
         } catch (err) {
             alert('Erro inesperado ao buscar dívidas.');
@@ -306,6 +427,9 @@
         divGeneralDebts.classList.add('d-none');
         divCharges.classList.remove('d-none');
         divInfoCustomer.classList.remove('d-none');
+        dividasPendentes.classList.remove('d-none');
+        
+        
     });
 
     function renderDebts(dividas) {
@@ -395,7 +519,7 @@
     });
 </script>
 
-<script>
+<!-- <script>
     document.addEventListener('DOMContentLoaded', async () => {
         try {
             const res = await fetch('/dividas/pendentes', {
@@ -404,9 +528,9 @@
                 credentials: 'include'
             });
             
-            console.log(res)
             if (!res.ok) throw new Error('Erro ao buscar dívidas pendentes');
             const { dividas } = await res.json();
+            console.log(dividas);
 
             renderPendingDebts(dividas);
         } catch (err) {
@@ -466,7 +590,7 @@
 
             container.appendChild(row);
         }
-</script>
+</script> -->
 
 
     

@@ -82,37 +82,59 @@ class DebtController {
     };
 
     async recuperarPendentes(req, res) {
-        const userId = req.user.id;
+        try {
+            const userId = req.user.id;
 
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            include: {
-                accounts: true
-            }
-        });
+            // Pega os parâmetros page e limit da query string, com valores padrão
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const skip = (page - 1) * limit;
 
-        if (!user) return res.redirect('/');
+            // Verifica se o usuário existe e tem conta
+            const conta = await prisma.account.findFirst({
+                where: { userId }
+            });
 
-        const conta = await prisma.account.findFirst({
-            where: { userId }
-        });
+            if (!conta) return res.status(404).json({ message: 'Conta não encontrada!' });
 
-        if (!conta) return res.status(404).json({ message: 'Conta não encontrada!' });
+            // Busca o total de dívidas pendentes para paginação
+            const totalDividas = await prisma.debt.count({
+                where: {
+                    accountId: conta.id,
+                    status: 'pendente'
+                }
+            });
 
-        const dividas = await prisma.debt.findMany({
-            where: {
-                accountId: conta.id,
-                status: 'pendente'
-            }
-        })
+            // Busca as dívidas pendentes paginadas
+            const dividas = await prisma.debt.findMany({
+                where: {
+                    accountId: conta.id,
+                    status: 'pendente'
+                },
+                skip,
+                take: limit,
+                orderBy: { dueDate: 'asc' }
+            });
 
-        console.log(dividas);
+            // Calcula total de páginas
+            const totalPages = Math.ceil(totalDividas / limit);
 
-        res.json({
-            status: 'ok',
-            dividas: dividas || []
-        });
+            // Retorna resposta com dados da paginação
+            res.json({
+                status: 'ok',
+                page,
+                limit,
+                totalDividas,
+                totalPages,
+                dividas
+            });
+
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: 'Erro ao recuperar dívidas pendentes' });
+        }
     }
+
 }
 
 module.exports = new DebtController();
