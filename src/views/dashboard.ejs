@@ -185,23 +185,30 @@
                 <h5 class="mb-3">Dívidas</h5>
                 <div id="debtsContainer"></div>
             </div>
+
+            <nav aria-label="paginacao" class="mt-3">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item" id="page-prev-divida">
+                        <button class="page-link">Anterior</button>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link" id="pagina-atual-dividas">1</span>
+                    </li>
+                    <li class="page-item" id="page-next-divida">
+                        <button class="page-link">Próximo</button>
+                    </li>
+                </ul>
+            </nav>
         </div>
 
-        <div id="toastLogout" class="toast align-items-center text-white bg-success border-0 position-fixed bottom-0 end-0 m-4"
-            role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="d-flex">
-                <div class="toast-body">
-                    Logout realizado com sucesso!
-                </div>
-            </div>
-        </div>
-
+        
+        <!-- Dividas Pendentes -->
         <div class="container-fluid mt-4" id="dividasPendentesContainer">
             <h3 class="mb-4">Dívidas Pendentes</h3>
         
             <div id="lista-dividas" class="list-group"></div>
         
-            <nav aria-label="Paginação" class="mt-3">
+            <nav aria-label="paginacao" class="mt-3">
                 <ul class="pagination justify-content-center">
                     <li class="page-item" id="page-prev">
                         <button class="page-link">Anterior</button>
@@ -215,7 +222,8 @@
                 </ul>
             </nav>  
         </div>
-        <!-- Modal Detalhes -->
+
+        <!-- Modal Detalhes Dividas Pendentes -->
         <div class="modal fade" id="modalDetalhes" tabindex="-1" aria-labelledby="modalDetalhesLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -240,321 +248,255 @@
                 </div>
             </div>
         </div>
+
+        <!--Toast-->
+        <div id="toastLogout" class="toast align-items-center text-white bg-success border-0 position-fixed bottom-0 end-0 m-4"
+            role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    Logout realizado com sucesso!
+                </div>
+            </div>
+        </div>
   
         
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<script>
-    const listaDividas = document.getElementById('lista-dividas');
-    const btnPrev = document.getElementById('page-prev');
-    const btnNext = document.getElementById('page-next');
-    const paginaAtualSpan = document.getElementById('pagina-atual');
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const listaDividas = document.getElementById('lista-dividas');
+            const btnPrev = document.getElementById('page-prev');
+            const btnNext = document.getElementById('page-next');
+            const paginaAtualSpan = document.getElementById('pagina-atual');
 
-    const modal = new bootstrap.Modal(document.getElementById('modalDetalhes'));
-    const modalId = document.getElementById('modal-id');
-    const modalDescricao = document.getElementById('modal-descricao');
-    const modalValor = document.getElementById('modal-valor');
-    const modalVencimento = document.getElementById('modal-vencimento');
-    const modalStatus = document.getElementById('modal-status');
-    const modalPixTxId = document.getElementById('modal-pixTxId');
-    const modalPixPayload = document.getElementById('modal-pixPayload');
+            const modal = new bootstrap.Modal(document.getElementById('modalDetalhes'));
+            const modalId = document.getElementById('modal-id');
+            const modalDescricao = document.getElementById('modal-descricao');
+            const modalValor = document.getElementById('modal-valor');
+            const modalVencimento = document.getElementById('modal-vencimento');
+            const modalStatus = document.getElementById('modal-status');
+            const modalPixTxId = document.getElementById('modal-pixTxId');
+            const modalPixPayload = document.getElementById('modal-pixPayload');
 
-    let paginaAtual = 1;
-    const limite = 5;
+            let paginaAtual = 1;
+            const limite = 5;
 
-    async function carregarDividas(pagina) {
-        try {
-            const response = await fetch(`/dividas/pendentes?page=${pagina}&limit=${limite}`, {
-                headers: {
-                    'Authorization': 'Bearer ' + localStorage.getItem('token') // ajuste conforme seu token
+            async function carregarDividas(pagina) {
+                try {
+                    const response = await fetch(`/dividas/pendentes?page=${pagina}&limit=${limite}`, {
+                        headers: {
+                            'Authorization': 'Bearer ' + localStorage.getItem('token')
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (data.status !== 'ok') {
+                        listaDividas.innerHTML = `<div class="alert alert-danger">Erro ao carregar dívidas</div>`;
+                        return;
+                    }
+
+                    const dividas = data.dividas;
+
+                    if (dividas.length === 0 && pagina > 1) {
+                        paginaAtual--;
+                        return;
+                    }
+
+                    listaDividas.innerHTML = '';
+
+                    dividas.forEach(divida => {
+                        const item = document.createElement('button');
+                        item.type = 'button';
+                        item.className = 'list-group-item list-group-item-action';
+                        item.innerHTML = `
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">${divida.description}</h5>
+                                <i class="bi bi-info-circle text-secondary debt-info-icon" title="Clique para ver detalhes"></i>
+                            </div>
+                            <p class="mb-1">Valor: R$ ${divida.amount.toFixed(2)}</p>
+                            <small>Status: <span class="badge bg-warning text-dark">${divida.status}</span></small>
+                        `;
+                        item.addEventListener('click', () => mostrarDetalhes(divida));
+                        listaDividas.appendChild(item);
+                    });
+
+                    paginaAtualSpan.textContent = paginaAtual;
+                    btnPrev.classList.toggle('disabled', paginaAtual === 1);
+                    btnNext.classList.toggle('disabled', dividas.length < limite);
+
+                } catch (error) {
+                    listaDividas.innerHTML = `<div class="alert alert-danger">Erro ao carregar dívidas</div>`;
+                    console.error(error);
+                }
+            }
+
+            function mostrarDetalhes(divida) {
+                modalId.textContent = divida.id;
+                modalDescricao.textContent = divida.description;
+                modalValor.textContent = divida.amount.toFixed(2);
+                modalVencimento.textContent = new Date(divida.dueDate).toLocaleDateString();
+                modalStatus.textContent = divida.status;
+                modalPixTxId.textContent = divida.pixTxId || '-';
+                modalPixPayload.textContent = divida.pixPayload || '-';
+                modal.show();
+            }
+
+            btnPrev.querySelector('button').addEventListener('click', () => {
+                if (paginaAtual > 1) {
+                    paginaAtual--;
+                    carregarDividas(paginaAtual);
                 }
             });
 
-            const data = await response.json();
-
-            if (data.status !== 'ok') {
-                listaDividas.innerHTML = `<div class="alert alert-danger">Erro ao carregar dívidas</div>`;
-                return;
-            }
-
-            const dividas = data.dividas;
-
-            if (dividas.length === 0 && pagina > 1) {
-                paginaAtual--;
-                return;
-            }
-
-            listaDividas.innerHTML = '';
-
-            dividas.forEach(divida => {
-                const item = document.createElement('button');
-                item.type = 'button';
-                item.className = 'list-group-item list-group-item-action';
-                item.innerHTML = `
-            <div class="d-flex w-100 justify-content-between">
-              <h5 class="mb-1">${divida.description}</h5>
-              <small>${new Date(divida.dueDate).toLocaleDateString()}</small>
-            </div>
-            <p class="mb-1">Valor: R$ ${divida.amount.toFixed(2)}</p>
-            <small>Status: <span class="badge bg-warning text-dark">${divida.status}</span></small>
-          `;
-                item.addEventListener('click', () => mostrarDetalhes(divida));
-                listaDividas.appendChild(item);
+            btnNext.querySelector('button').addEventListener('click', () => {
+                paginaAtual++;
+                carregarDividas(paginaAtual);
             });
 
-            paginaAtualSpan.textContent = paginaAtual;
-            btnPrev.classList.toggle('disabled', paginaAtual === 1);
-            btnNext.classList.toggle('disabled', dividas.length < limite);
-
-        } catch (error) {
-            listaDividas.innerHTML = `<div class="alert alert-danger">Erro ao carregar dívidas</div>`;
-            console.error(error);
-        }
-    }
-
-    function mostrarDetalhes(divida) {
-        modalId.textContent = divida.id;
-        modalDescricao.textContent = divida.description;
-        modalValor.textContent = divida.amount.toFixed(2);
-        modalVencimento.textContent = new Date(divida.dueDate).toLocaleDateString();
-        modalStatus.textContent = divida.status;
-        modalPixTxId.textContent = divida.pixTxId || '-';
-        modalPixPayload.textContent = divida.pixPayload || '-';
-        modal.show();
-    }
-
-    btnPrev.querySelector('button').addEventListener('click', () => {
-        if (paginaAtual > 1) {
-            paginaAtual--;
             carregarDividas(paginaAtual);
+        });
+    </script>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const main = document.getElementById('main');
+
+            sidebar.classList.toggle('collapsed');
+            sidebar.classList.toggle('open'); // Para mobile
+            main.classList.toggle('full-width');
         }
-    });
+    </script>
+        
+    <script>
+        function handleLogoutClick(event) {
+            event.preventDefault();
 
-    btnNext.querySelector('button').addEventListener('click', () => {
-        paginaAtual++;
-        carregarDividas(paginaAtual);
-    });
-
-    carregarDividas(paginaAtual);
-</script>
-
-<script>
-    function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const main = document.getElementById('main');
-
-        sidebar.classList.toggle('collapsed');
-        sidebar.classList.toggle('open'); // Para mobile
-        main.classList.toggle('full-width');
-    }
-</script>
-    
-<script>
-    function handleLogoutClick(event) {
-        event.preventDefault();
-
-        fetch('/logout', {
-            method: 'POST',
-            headers: {
-                'Content-type': 'application/json'
-            },
-            credentials: "include",
-        })
-            .then(res => res.json().then(data => ({ status: res.status, body: data })))
-            .then(({ status, body }) => {
-                if (status === 200) {
-                    const toast = document.getElementById('toastLogout');
-                    toast.classList.add('show');
-
-                    setTimeout(() => {
-                        window.location.href = '/';
-                    }, 2000);
-                } else {
-                    alert(body.message || 'Erro ao fazer logout.');
-                }
-            })
-            .catch(() => alert('Erro inesperado ao fazer logout.'));
-    }
-
-    document.getElementById('sidebarLogout').addEventListener('click', handleLogoutClick);
-    document.getElementById('topbarLogout').addEventListener('click', handleLogoutClick);
-</script>
-
-<script>
-    let linkDebts = document.getElementById('linkDebts');
-    let linkStart = document.getElementById('start');
-    let divGeneralDebts = document.getElementById('generalDebts');
-    let divCharges = document.getElementById('charges');
-    let divInfoCustomer = document.getElementById('infoCustomer');
-    let debtsContainer = document.getElementById('debtsContainer');
-    let dividasPendentes = document.getElementById('dividasPendentesContainer');
-
-    linkDebts.addEventListener('click', async function (e) {
-        e.preventDefault();
-        divGeneralDebts.classList.remove('d-none');
-        divCharges.classList.add('d-none');
-        divInfoCustomer.classList.add('d-none'); 
-        dividasPendentes.classList.add('d-none'); 
-
-        try {
-            const res = await fetch('/dividas/todas', {
-                method: 'GET',
+            fetch('/logout', {
+                method: 'POST',
                 headers: {
                     'Content-type': 'application/json'
                 },
-                credentials: 'include'
-            });
-            
+                credentials: "include",
+            })
+                .then(res => res.json().then(data => ({ status: res.status, body: data })))
+                .then(({ status, body }) => {
+                    if (status === 200) {
+                        const toast = document.getElementById('toastLogout');
+                        toast.classList.add('show');
 
-            const { status, body } = {
-                status: res.status,
-                body: await res.json()
-            };
-
-            if (status === 200) {
-                console.log(body.dividas);
-                renderDebts(body.dividas);
-            } else {
-                alert(body.message || 'Erro ao buscar dívidas.'.err);
-            }
-        } catch (err) {
-            alert('Erro inesperado ao buscar dívidas.');
-        }
-    });
-
-    linkStart.addEventListener('click', function (e) {
-        e.preventDefault();
-        divGeneralDebts.classList.add('d-none');
-        divCharges.classList.remove('d-none');
-        divInfoCustomer.classList.remove('d-none');
-        dividasPendentes.classList.remove('d-none');
-        
-        
-    });
-
-    function renderDebts(dividas) {
-        debtsContainer.innerHTML = '';
-
-        if (!dividas || dividas.length === 0) {
-            debtsContainer.innerHTML = `
-                <div class="card card-custom p-4 text-center text-muted">
-                    <i class="bi bi-exclamation-circle fs-4 mb-2"></i>
-                    <p class="mb-0">Você ainda não possui cobranças registradas.</p>
-                </div>
-            `;
-            return;
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 2000);
+                    } else {
+                        alert(body.message || 'Erro ao fazer logout.');
+                    }
+                })
+                .catch(() => alert('Erro inesperado ao fazer logout.'));
         }
 
-        const row = document.createElement('div');
-        row.className = 'row row-cols-1 row-cols-md-2 g-4';
+        document.getElementById('sidebarLogout').addEventListener('click', handleLogoutClick);
+        document.getElementById('topbarLogout').addEventListener('click', handleLogoutClick);
+    </script>
 
-        dividas.forEach(divida => {
-            const statusClass =
-                divida.status === 'pendente' ? 'bg-warning text-dark' :
-                    divida.status === 'paga' ? 'bg-success' :
-                        'bg-danger';
+    <script>
+        let listaDividas = document.getElementById('lista-dividas');
+        let btnPrevD = document.getElementById('page-prev-divida');
+        let btnNextD = document.getElementById('page-next-divida');
+        let paginaAtualSpan = document.getElementById('pagina-atual-dividas');
 
-            const card = document.createElement('div');
-            card.className = 'col';
-            card.innerHTML = `
-                <div class="card card-custom p-4 h-100 d-flex flex-column justify-content-between">
-                    <div>
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <strong>${divida.description}</strong>
-                            <i class="bi bi-info-circle text-secondary debt-info-icon" data-id="${divida.id}"
-                                                    data-description="${divida.description}" data-amount="${divida.amount}" data-status="${divida.status}"
-                                                    data-created="${divida.createdAt}" data-due="${divida.dueDate}" title="Clique para ver detalhes"></i>
-                        </div>
-                        <p class="mb-1">Valor: <strong>R$ ${divida.amount.toFixed(2)}</strong></p>
-                        <p class="mb-1">
-                            Status:
-                            <span class="badge ${statusClass}">${divida.status}</span>
-                        </p>
-                        <p class="text-muted small mb-0">Vencimento: ${new Date(divida.dueDate).toLocaleDateString()}</p>
-                    </div>
-                    ${divida.status === 'pendente' ? `
-                        <a href="/pagar/${divida.id}" class="btn btn-sm btn-outline-success mt-3">
-                            <i class="bi bi-cash-coin"></i> Pagar
-                        </a>` : ''}
-                </div>
-            `;
-            row.appendChild(card);
+        let linkDebts = document.getElementById('linkDebts');
+        let linkStart = document.getElementById('start');
+        let divGeneralDebts = document.getElementById('generalDebts');
+        let divCharges = document.getElementById('charges');
+        let divInfoCustomer = document.getElementById('infoCustomer');
+        let debtsContainer = document.getElementById('debtsContainer');
+        let dividasPendentes = document.getElementById('dividasPendentesContainer');
+
+        let paginaAtual = 1;
+        const limite = 5;
+
+        linkDebts.addEventListener('click', async function (e) {
+            e.preventDefault();
+            divGeneralDebts.classList.remove('d-none');
+            divCharges.classList.add('d-none');
+            divInfoCustomer.classList.add('d-none');
+            dividasPendentes.classList.add('d-none');
+            paginaAtual = 1;
+            await carregarDividas(paginaAtual);
         });
 
-        
+        linkStart.addEventListener('click', function (e) {
+            e.preventDefault();
+            divGeneralDebts.classList.add('d-none');
+            divCharges.classList.remove('d-none');
+            divInfoCustomer.classList.remove('d-none');
+            dividasPendentes.classList.remove('d-none');
+        });
 
+        btnNextD.addEventListener('click', async () => {
+            paginaAtual++;
+            await carregarDividas(paginaAtual);
+        });
 
-        debtsContainer.appendChild(row);
-        const modal = document.getElementById('modalDetalhesDivida');
-        modal.show();
-    }
-</script>
+        btnPrevD.addEventListener('click', async () => {
+            if (paginaAtual > 1) {
+                paginaAtual--;
+                await carregarDividas(paginaAtual);
+            }
+        });
 
-<script>
-    // Função para abrir o modal de detalhes da dívida
-    document.addEventListener('click', function (e) {
-        if (e.target.classList.contains('debt-info-icon')) {
-            const icon = e.target;
+        async function carregarDividas(paginaAtual) {
+            try {
+                const res = await fetch(`/dividas/todas?page=${paginaAtual}&limit=${limite}`, {
+                    headers: {
+                        'Content-type': 'application/json'
+                    },
+                });
 
-            // Pega os dados do dataset do ícone
-            const descricao = icon.dataset.description;
-            const valor = parseFloat(icon.dataset.amount).toFixed(2);
-            const status = icon.dataset.status;
-            const criadoEm = new Date(icon.dataset.created).toLocaleDateString();
-            const vencimento = new Date(icon.dataset.due).toLocaleDateString();
-            const id = icon.dataset.id;
+                const { status, body } = {
+                    status: res.status,
+                    body: await res.json()
+                };
 
-            // Preenche os campos do modal
-            document.getElementById('modalDescricao').textContent = descricao;
-            document.getElementById('modalValor').textContent = valor;
-            document.getElementById('modalStatus').textContent = status;
-            document.getElementById('modalCriacao').textContent = criadoEm;
-            document.getElementById('modalVencimento').textContent = vencimento;
-            document.getElementById('modalId').textContent = id;
+                if (status === 200) {
+                    renderDebts(body.dividas);
 
-            // Abre o modal usando Bootstrap
-            const modal = new bootstrap.Modal(document.getElementById('modalDetalhesDivida'));
-            modal.show();
+                    paginaAtualSpan.textContent = paginaAtual;
+
+                    // Acessar os botões reais dentro dos <li>
+                    const btnPrevReal = btnPrevD.querySelector('button');
+                    const btnNextReal = btnNextD.querySelector('button');
+
+                    const isFirstPage = paginaAtual === 1;
+                    const isLastPage = body.dividas.length < limite;
+
+                    // Atualiza visual e funcionalmente os botões
+                    btnPrevD.classList.toggle('disabled', isFirstPage);
+                    btnPrevReal.disabled = isFirstPage;
+
+                    btnNextD.classList.toggle('disabled', isLastPage);
+                    btnNextReal.disabled = isLastPage;
+                } else {
+                    alert(body.message || 'Erro ao buscar dívidas.');
+                }
+            } catch (err) {
+                alert('Erro inesperado ao buscar dívidas.');
+                console.error(err);
+            }
         }
-    });
-</script>
 
-<!-- <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-        try {
-            const res = await fetch('/dividas/pendentes', {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include'
-            });
-            
-            if (!res.ok) throw new Error('Erro ao buscar dívidas pendentes');
-            const { dividas } = await res.json();
-            console.log(dividas);
-
-            renderPendingDebts(dividas);
-        } catch (err) {
-            console.error(err);
-            document.getElementById('pendentesContainer').innerHTML = `
-                <div class="card card-custom p-4 text-center text-muted">
-                    <i class="bi bi-exclamation-circle fs-4 mb-2"></i>
-                    <p class="mb-0">Erro ao carregar cobranças pendentes.</p>
-                </div>
-            `;
-        }
-    });
-
-    function renderPendingDebts(dividas) {
-            const container = document.getElementById('pendentesContainer');
-            container.innerHTML = '';
+        function renderDebts(dividas) {
+            debtsContainer.innerHTML = '';
 
             if (!dividas || dividas.length === 0) {
-                container.innerHTML = `
-            <div class="card card-custom p-4 text-center text-muted">
-                <i class="bi bi-exclamation-circle fs-4 mb-2"></i>
-                <p class="mb-0">Nenhuma dívida pendente encontrada.</p>
-            </div>
-        `;
+                debtsContainer.innerHTML = `
+                    <div class="card card-custom p-4 text-center text-muted">
+                        <i class="bi bi-exclamation-circle fs-4 mb-2"></i>
+                        <p class="mb-0">Você ainda não possui cobranças registradas.</p>
+                    </div>
+                `;
                 return;
             }
 
@@ -562,38 +504,70 @@
             row.className = 'row row-cols-1 row-cols-md-2 g-4';
 
             dividas.forEach(divida => {
+                const statusClass =
+                    divida.status === 'pendente' ? 'bg-warning text-dark' :
+                        divida.status === 'paga' ? 'bg-success' :
+                            'bg-danger';
+
                 const card = document.createElement('div');
                 card.className = 'col';
                 card.innerHTML = `
-            <div class="card card-custom p-4 h-100 d-flex flex-column justify-content-between">
-                <div>
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <strong>${divida.description}</strong>
-                        <i class="bi bi-info-circle text-secondary debt-info-icon" data-id="${divida.id}"
-                                                data-description="${divida.description}" data-amount="${divida.amount}" data-status="${divida.status}"
-                                                data-created="${divida.createdAt}" data-due="${divida.dueDate}" title="Clique para ver detalhes"></i>
+                    <div class="card card-custom p-4 h-100 d-flex flex-column justify-content-between">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <strong>${divida.description}</strong>
+                                <i class="bi bi-info-circle text-secondary debt-info-icon" data-id="${divida.id}"
+                                                        data-description="${divida.description}" data-amount="${divida.amount}" data-status="${divida.status}"
+                                                        data-created="${divida.createdAt}" data-due="${divida.dueDate}" title="Clique para ver detalhes"></i>
+                            </div>
+                            <p class="mb-1">Valor: <strong>R$ ${divida.amount.toFixed(2)}</strong></p>
+                            <p class="mb-1">
+                                Status:
+                                <span class="badge ${statusClass}">${divida.status}</span>
+                            </p>
+                            <p class="text-muted small mb-0">Vencimento: ${new Date(divida.dueDate).toLocaleDateString()}</p>
+                        </div>
+                        ${divida.status === 'pendente' ? `
+                            <a href="/pagar/${divida.id}" class="btn btn-sm btn-outline-success mt-3">
+                                <i class="bi bi-cash-coin"></i> Pagar
+                            </a>` : ''}
                     </div>
-                    <p class="mb-1">Valor: <strong>R$ ${divida.amount.toFixed(2)}</strong></p>
-                    <p class="mb-1">
-                        Status:
-                        <span class="badge bg-warning text-dark">${divida.status}</span>
-                    </p>
-                    <p class="text-muted small mb-0">Vencimento: ${new Date(divida.dueDate).toLocaleDateString()}</p>
-                </div>
-                <a href="/pagar/${divida.id}" class="btn btn-sm btn-outline-success mt-3">
-                    <i class="bi bi-cash-coin"></i> Pagar
-                </a>
-            </div>
-        `;
+                `;
                 row.appendChild(card);
             });
 
-            container.appendChild(row);
+            debtsContainer.appendChild(row);
         }
-</script> -->
+    </script>
 
+    <script>
+        // Função para abrir o modal de detalhes da dívida
+        document.addEventListener('click', function (e) {
+            if (e.target.classList.contains('debt-info-icon')) {
+                const icon = e.target;
 
-    
+                // Pega os dados do dataset do ícone
+                const descricao = icon.dataset.description;
+                const valor = parseFloat(icon.dataset.amount).toFixed(2);
+                const status = icon.dataset.status;
+                const criadoEm = new Date(icon.dataset.created).toLocaleDateString();
+                const vencimento = new Date(icon.dataset.due).toLocaleDateString();
+                const id = icon.dataset.id;
+
+                // Preenche os campos do modal
+                document.getElementById('modalDescricao').textContent = descricao;
+                document.getElementById('modalValor').textContent = valor;
+                document.getElementById('modalStatus').textContent = status;
+                document.getElementById('modalCriacao').textContent = criadoEm;
+                document.getElementById('modalVencimento').textContent = vencimento;
+                document.getElementById('modalId').textContent = id;
+
+                // Abre o modal usando Bootstrap
+                const modal = new bootstrap.Modal(document.getElementById('modalDetalhesDivida'));
+                modal.show();
+            }
+        });
+    </script>
 </body>
 
 </html>

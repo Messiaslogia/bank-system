@@ -65,19 +65,54 @@ class DebtController {
     }
 
     async recuperarTodas(req, res) {
-        const userId = req.user.id;
+        try {
+            const userId = req.user.id;
 
-        const conta = await prisma.account.findFirst({
-            where: { userId },
-            include: {
-                Debt: true
-            }
-        });
+            // Pega os parâmetros page e limit da query string, com valores padrão
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const skip = (page - 1) * limit;
 
-        res.json({
-            status: 'ok',
-            dividas: conta?.Debt || []
-        });
+            const conta = await prisma.account.findFirst({
+                where: { userId }
+            });
+
+            if (!conta) return res.status(404).json({ message: 'Conta não encontrada!' });
+
+            const totalDividas = await prisma.debt.count({
+                where: {
+                    accountId: conta.id,
+                    status: 'pendente'
+                }
+            });
+
+            // Busca as dívidas pendentes paginadas
+            const dividas = await prisma.debt.findMany({
+                where: {
+                    accountId: conta.id,
+                },
+                skip,
+                take: limit,
+                orderBy: { dueDate: 'asc' }
+            });
+
+
+            // Calcula total de páginas
+            const totalPages = Math.ceil(totalDividas / limit);
+
+            // Retorna resposta com dados da paginação
+            res.json({
+                status: 'ok',
+                page,
+                limit,
+                totalDividas,
+                totalPages,
+                dividas
+            });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: 'Erro ao recuperar dívidas pendentes' });
+        }
 
     };
 
